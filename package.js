@@ -15,6 +15,8 @@ Package.onUse(function(api) {
 
   api.addFiles('geocode.js');
   api.addFiles('cwohlman:meteor-geocoded-collection.js');
+
+  api.export('Geocode');
 });
 
 Package.onTest(function(api) {
