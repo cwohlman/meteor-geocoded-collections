@@ -96,7 +96,10 @@ Mongo.Collection.prototype.geocodeDocument = Meteor.wrapAsync(function (
 
     Geocode.get(valuesToGeocode.join(' '), function (error, result) {
       if (error) return callback(error);
-      else if (!result) return callback(new Meteor.Error('geocoding-failed', 'Geocoding Failed'));
+      else if (!result) {
+        return callback(
+          new Meteor.Error('geocoding-failed', 'Geocoding Failed'));
+      }
       else {
         var mongodbPoint = {
           type: 'Point'
@@ -141,9 +144,8 @@ Mongo.Collection.prototype.geocodeFields = function (fields, geoField) {
     this.insert = function (doc) {
       var args = _.toArray(arguments);
       var self = this;
-      var id = Random.id();
-      doc = _.clone(doc);
-      doc._id = doc._id || id;
+      // doc = _.clone(doc);
+      doc._id = doc._id || Random.id();
       Mongo.Collection.prototype.geocodeDocument(
         null, doc, fields, geoField, function (error, result) {
           if (error) {
