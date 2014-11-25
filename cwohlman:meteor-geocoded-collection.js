@@ -1,15 +1,16 @@
 var get = function (objectOrModifier, path) {
+  if (!_.isObject(objectOrModifier)) return undefined;
   if (_.has(objectOrModifier, path)) {
     return objectOrModifier[path];
   } else {
     var result = objectOrModifier;
-    _.find(path.split('.'), function (part) {
+    if (_.find(path.split('.'), function (part) {
       if (!_.has(result, part)) return true;
       else {
         result = result[part];
         return false;
       }
-    });
+    })) return undefined;
     return result;
   }
 };
@@ -41,7 +42,7 @@ Mongo.Collection.prototype.geocodeDocument = Meteor.wrapAsync(function (
       // apply modifier to doc. When geocoding we need the complete document,
       // not just the fields which have changed.
       var _collection = new Mongo.Collection(null);
-      var _id = _.collection.insert(doc);
+      var _id = _collection.insert(doc);
       _collection.update(_id, modifier);
       doc = _collection.findOne(_id);
     } else {
@@ -80,7 +81,7 @@ Mongo.Collection.prototype.geocodeDocument = Meteor.wrapAsync(function (
       return get(doc, field);
     });
 
-    var hasValuesToGeocode = _.all(valuesToGeocode, _.isEmpty);
+    var hasValuesToGeocode = !_.all(valuesToGeocode, _.isEmpty);
 
     // We unset the geoField if all geocodedFields are empty.
     if (!hasValuesToGeocode && documentHasModifier) {
@@ -93,9 +94,9 @@ Mongo.Collection.prototype.geocodeDocument = Meteor.wrapAsync(function (
       return callback();
     }
 
-    Geocode.get(valuesToGeocode, function (error, result) {
-      if (error) callback(error);
-      else if (!result) callback(new Error('Geocoding Failed'));
+    Geocode.get(valuesToGeocode.join(' '), function (error, result) {
+      if (error) return callback(error);
+      else if (!result) return callback(new Meteor.Error('geocoding-failed', 'Geocoding Failed'));
       else {
         var mongodbPoint = {
           type: 'Point'
@@ -107,7 +108,7 @@ Mongo.Collection.prototype.geocodeDocument = Meteor.wrapAsync(function (
         } else {
           set(modifier.$set, geoField, mongodbPoint);
         }
-        callback();
+        return callback();
       }
     });
 });
@@ -119,68 +120,55 @@ Mongo.Collection.prototype.geocodeFields = function (fields, geoField) {
   check(fields, [String]);
   check(geoField, String);
 
-  var processDoc = function (doc, callback) {
-    var val = doc;
-    var last;
-    var parts = geoField.split('.');
-    _.each(parts, function (a, i) {
-      if (i == parts.length - 1) last = a;
-      else val = val[a];
-    });
-
-
-    if (!val[last]) {
-      var geoQuery = _.map(fields, function (field) {
-        var val = doc;
-        _.each(field.split('.'), function (a) {val = val[a];});
-
-        if (_.isString(val)) {
-          return val;
-        }
-      });
-      geoQuery = _.filter(geoQuery, _.identity).join(' ');
-
-      Geocode.get(geoQuery, function (error, result) {
-        if (error) callback(error);
-        else if (result) {
-          val[last] = {
-            type: 'Point'
-            , coordinates: [result.lng, result.lat]
-          };
-          callback();
-        }
-        else {
-          callback();
-        }
-      });
-
-    } else if (_.isFunction(callback)) {
-      callback();
-    }
-  };
-
   if (Meteor.isServer) {
-    // Safe to run as part of before/after hooks
+    // Server side works differently from client side, this is because server
+    // side we have fibers, but we don't have any garuntee that
+    // Collection.insert will be called (as opposed to some internal method)
+    // the collectionhooks package goes to the trouble of ensuring this method
+    // will be called before an insert;
     this.before.insert(function (userId, doc) {
-      processDoc(doc);
+      Mongo.Collection.prototype.geocodeDocument(null, doc, fields, geoField);
     });
-    this.before.update(function (userId, doc, fieldNames, modifier) {
-      // We don't support $push since our geocoding doesn't handle arrays anyway.
-      if (modifier.$set && !modifier.$set[geoField]) {
 
-      }
+    this.before.update(function (userId, doc, fieldNames, modifier) {
+      Mongo.Collection.prototype.geocodeDocument(
+        modifier, doc, fields, geoField);
     });
   } else {
     var _insert = this.insert;
-    this.insert = function (doc, callback) {
-      var self = this;
+    var _update = this.update;
+
+    this.insert = function (doc) {
       var args = _.toArray(arguments);
-      doc._id = doc._id || Random.id();
-      processDoc(doc, function (error, result) {
-        if (error) callback(error);
-        else _insert.apply(self, args);
+      var self = this;
+      var id = Random.id();
+      doc = _.clone(doc);
+      doc._id = doc._id || id;
+      Mongo.Collection.prototype.geocodeDocument(
+        null, doc, fields, geoField, function (error, result) {
+          if (error) {
+            var callback = _.last(args);
+            if (_.isFunction(callback)) callback(error);
+            return;
+          }
+          _insert.apply(self, args);
       });
       return doc._id;
+    };
+
+    this.update = function (id, modifier) {
+      var doc = this.findOne(id);
+      var args = _.toArray(arguments);
+      var self = this;
+      Mongo.Collection.prototype.geocodeDocument(
+        modifier, doc, fields, geoField, function (error, result) {
+          if (error) {
+            var callback = _.last(args);
+            if (_.isFunction(callback)) callback(error);
+            return;
+          }
+          _update.apply(self, args);
+      });
     };
   }
 };
