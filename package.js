@@ -1,7 +1,7 @@
 Package.describe({
   name: 'cwohlman:geocoded-collection',
   summary: 'Auto-geocode your collection documents',
-  version: "0.1.1",
+  version: "0.1.2",
   git: 'https://github.com/cwohlman/meteor-geocoded-collections.git'
 });
 
