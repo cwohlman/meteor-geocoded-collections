@@ -124,6 +124,8 @@ Mongo.Collection.prototype.geocodeFields = function (fields, geoField) {
   check(geoField, String);
 
   if (Meteor.isServer) {
+    this._ensureIndex({geo : "2dsphere"});
+
     // Server side works differently from client side, this is because server
     // side we have fibers, but we don't have any garuntee that
     // Collection.insert will be called (as opposed to some internal method)
