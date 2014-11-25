@@ -1,8 +1,8 @@
 Package.describe({
-  name: 'cwohlman:meteor-geocoded-collection',
-  summary: ' /* Fill me in! */ ',
-  version: '1.0.0',
-  git: ' /* Fill me in! */ '
+  name: 'cwohlman:geocoded-collection',
+  summary: 'Auto-geocode your collection documents',
+  version: '0.1.0',
+  git: 'https://github.com/cwohlman/meteor-geocoded-collections.git'
 });
 
 Package.onUse(function(api) {
@@ -19,6 +19,6 @@ Package.onUse(function(api) {
 
 Package.onTest(function(api) {
   api.use('tinytest');
-  api.use('cwohlman:meteor-geocoded-collection');
+  api.use('cwohlman:geocoded-collection');
   api.addFiles('cwohlman:meteor-geocoded-collection-tests.js');
 });
