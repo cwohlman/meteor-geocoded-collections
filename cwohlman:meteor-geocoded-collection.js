@@ -103,7 +103,7 @@ Mongo.Collection.prototype.geocodeDocument = Meteor.wrapAsync(function (
       else {
         var mongodbPoint = {
           type: 'Point'
-          , coordinates: [result.lng, result.lat]
+          , coordinates: [result.geometry.location.lng, result.geometry.location.lat]
         };
         modifier.$set = modifier.$set || {};
         if (documentHasModifier) {
