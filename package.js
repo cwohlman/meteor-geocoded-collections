@@ -1,7 +1,7 @@
 Package.describe({
   name: 'cwohlman:geocoded-collection',
   summary: 'Auto-geocode your collection documents',
-  version: "0.2.0",
+  version: "0.2.1",
   git: 'https://github.com/cwohlman/meteor-geocoded-collections.git'
 });
 
@@ -12,6 +12,7 @@ Package.onUse(function(api) {
   api.use('mongo');
   api.use('http');
   api.use('underscore');
+  api.use('check');
 
   api.addFiles('geocode.js');
   api.addFiles('cwohlman:meteor-geocoded-collection.js');
